@@ -434,10 +434,8 @@ export default function Clippy() {
     const renderPreviewContent = () => {
       switch (item.type) {
         case "link":
-          // Check if domain is known to block iframes
-          const blockedDomains = ['github.com', 'google.com', 'facebook.com', 'twitter.com', 'x.com', 'youtube.com', 'linkedin.com']
-          const domain = item.domain || ''
-          const shouldShowIframe = !blockedDomains.some(blocked => domain.includes(blocked))
+          // Always attempt iframe loading, let it gracefully fallback on error
+          const shouldShowIframe = true
           
           return (
             <div className="space-y-4">
@@ -490,10 +488,26 @@ export default function Clippy() {
                         title={item.title}
                         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                         loading="lazy"
-                        onLoad={() => setIframeLoading(false)}
+                        onLoad={() => {
+                          setIframeLoading(false)
+                        }}
                         onError={() => {
                           setIframeLoading(false)
                           setIframeError(true)
+                        }}
+                        // Add timeout for blocked domains
+                        ref={(iframe) => {
+                          if (iframe) {
+                            const timeout = setTimeout(() => {
+                              if (iframeLoading) {
+                                setIframeLoading(false)
+                                setIframeError(true)
+                              }
+                            }, 10000) // 10 second timeout
+                            
+                            iframe.addEventListener('load', () => clearTimeout(timeout))
+                            iframe.addEventListener('error', () => clearTimeout(timeout))
+                          }
                         }}
                       />
                       {!iframeLoading && (
@@ -518,7 +532,7 @@ export default function Clippy() {
                         </div>
                         <h4 className="font-semibold text-lg mb-2">{item.title}</h4>
                         <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                          {item.preview || `${item.domain} doesn't allow embedding for security reasons.`}
+                          {item.preview || 'This website cannot be displayed in a preview frame.'}
                         </p>
                         <Button
                           variant="outline"
