@@ -430,40 +430,27 @@ export default function Clippy() {
       setIframeLoading(true)
       setIframeError(false)
       
-      // For links, try to detect if they'll be blocked before showing iframe
+      // For links, set a general timeout for iframe loading
       if (item.type === 'link') {
-        // Extract domain from URL if not already available
-        let domain = item.domain || ''
-        if (!domain && item.content) {
-          try {
-            const url = new URL(item.content)
-            domain = url.hostname
-          } catch (error) {
-            console.log('Failed to parse URL:', item.content)
-          }
-        }
+        console.log('🔄 Setting 8-second timeout for link:', item.title || item.content.substring(0, 50))
         
-        // Set a shorter timeout for known problematic domains
-        const knownBlockedDomains = ['github.com', 'google.com', 'facebook.com', 'twitter.com', 'x.com', 'youtube.com', 'linkedin.com']
-        const isLikelyBlocked = knownBlockedDomains.some(blocked => domain.includes(blocked))
+        const timer = setTimeout(() => {
+          console.log('⏰ Timeout reached - showing fallback for:', item.title || item.content.substring(0, 50))
+          setIframeLoading(false)
+          setIframeError(true)
+        }, 8000) // 8 second timeout for all sites
         
-        if (isLikelyBlocked) {
-          // Show fallback immediately for known blocked domains
-          const timer = setTimeout(() => {
-            setIframeLoading(false)
-            setIframeError(true)
-          }, 2000) // Very short timeout for known blocked sites
-          
-          return () => clearTimeout(timer)
-        }
+        return () => clearTimeout(timer)
       }
-    }, [item.id, item.type, item.domain])
+    }, [item.id, item.type, item.domain, item.content])
 
     const renderPreviewContent = () => {
       switch (item.type) {
         case "link":
-          // Always attempt iframe loading, let it gracefully fallback on error
+          // Always attempt iframe loading for ALL links - let them fail gracefully
           const shouldShowIframe = true
+          
+          console.log('🎯 Attempting iframe for ALL links:', item.title || item.content.substring(0, 50))
           
           return (
             <div className="space-y-4">
