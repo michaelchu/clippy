@@ -11,7 +11,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "ClipboardPro - Smart Clipboard Manager",
+  title: "Clippy - Smart Clipboard Manager",
   description: "A modern clipboard manager for organizing and searching your digital content",
   generator: "v0.app",
 }

@@ -50,7 +50,7 @@ interface ClipboardItem {
   color?: string
 }
 
-export default function ClipboardManager() {
+export default function Clippy() {
   const [items, setItems] = useState<ClipboardItem[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -521,7 +521,7 @@ export default function ClipboardManager() {
               <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden">
                 {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
-              <h1 className="text-xl font-semibold">PastePad</h1>
+              <h1 className="text-xl font-semibold">Clippy</h1>
             </div>
 
             <div className="flex items-center space-x-2 sm:space-x-3">
