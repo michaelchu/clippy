@@ -392,7 +392,7 @@ export default function Clippy() {
     )
   }
 
-  const PreviewModal = () => {
+  const PreviewModal = useCallback(() => {
     if (!previewItem) return null
 
     const renderPreviewContent = () => {
@@ -431,13 +431,47 @@ export default function Clippy() {
                     <span className="text-sm text-muted-foreground">{previewItem.content}</span>
                   </div>
                 </div>
-                <div className="aspect-video">
-                  <iframe
-                    src={previewItem.content}
-                    className="w-full h-full"
-                    title={previewItem.title}
-                    sandbox="allow-scripts allow-same-origin"
-                  />
+                <div className="aspect-video bg-muted/20 flex flex-col items-center justify-center p-8">
+                  {previewItem.preview && (
+                    <div className="text-center max-w-md">
+                      <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                        <Link className="h-8 w-8 text-primary" />
+                      </div>
+                      <h4 className="font-semibold text-lg mb-2">{previewItem.title}</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {previewItem.preview}
+                      </p>
+                      <div className="mt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => window.open(previewItem.content, "_blank")}
+                          className="inline-flex items-center space-x-2"
+                        >
+                          <Link className="h-4 w-4" />
+                          <span>Visit {previewItem.domain}</span>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {!previewItem.preview && (
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                        <Link className="h-8 w-8 text-primary" />
+                      </div>
+                      <h4 className="font-semibold text-lg mb-2">{previewItem.title}</h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Link preview not available
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => window.open(previewItem.content, "_blank")}
+                        className="inline-flex items-center space-x-2"
+                      >
+                        <Link className="h-4 w-4" />
+                        <span>Visit {previewItem.domain}</span>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -566,7 +600,7 @@ export default function Clippy() {
         </DialogContent>
       </Dialog>
     )
-  }
+  }, [previewItem, previewOpen, formatTimestamp, copyToClipboard])
 
   const handleThemeChange = useCallback(
     (newTheme: string) => {
