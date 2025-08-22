@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import React, { useState, useEffect, useCallback, useMemo, memo } from "react"
 import {
   Search,
   Plus,
@@ -84,6 +84,19 @@ export default function Clippy() {
     setMounted(true)
   }, [])
 
+  const fetchLinkMetadata = async (url: string) => {
+    try {
+      const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
+      if (response.ok) {
+        const metadata = await response.json()
+        return metadata
+      }
+    } catch (error) {
+      console.error('Failed to fetch link metadata:', error)
+    }
+    return null
+  }
+
   useEffect(() => {
     const mockItems: ClipboardItem[] = [
       {
@@ -142,27 +155,93 @@ export default function Clippy() {
         try {
           const text = await navigator.clipboard.readText()
           if (text && text.trim()) {
-            const newItem: ClipboardItem = {
+            const isLink = text.startsWith("http://") || text.startsWith("https://")
+            
+            let newItem: ClipboardItem = {
               id: Date.now().toString(),
               content: text,
-              type: text.startsWith("http") ? "link" : "text",
+              type: isLink ? "link" : "text",
               timestamp: new Date(),
               tags: [],
               favorite: false,
-              title: text.startsWith("http") ? "New Link" : "New Text",
+              title: isLink ? "Loading..." : "New Text",
             }
+
+            // Add item immediately with loading state
             setItems((prev) => [newItem, ...prev])
-            toast({
-              title: "Content captured",
-              description: "New clipboard item saved successfully",
-            })
+
+            // Fetch link metadata if it's a link
+            if (isLink) {
+              console.log('🔍 Fetching metadata for:', text)
+              const metadata = await fetchLinkMetadata(text)
+              console.log('📄 Metadata received:', metadata)
+              if (metadata) {
+                // Generate a color gradient based on domain
+                const colors = [
+                  "from-blue-500 to-purple-600",
+                  "from-green-500 to-blue-600", 
+                  "from-purple-500 to-pink-600",
+                  "from-orange-500 to-red-600",
+                  "from-teal-500 to-cyan-600",
+                  "from-indigo-500 to-blue-600"
+                ]
+                const colorIndex = metadata.domain.length % colors.length
+                
+                // Update the item with metadata
+                setItems((prev) => prev.map((item) => {
+                  if (item.id === newItem.id) {
+                    const updatedItem = {
+                      ...item,
+                      title: metadata.title,
+                      domain: metadata.domain,
+                      preview: metadata.description,
+                      color: colors[colorIndex]
+                    }
+                    
+                    console.log('✅ Updated item with metadata:', updatedItem)
+                    
+                    // Also update previewItem if it's the same item currently being previewed
+                    setPreviewItem(current => {
+                      if (current && current.id === newItem.id) {
+                        console.log('🔄 Also updating previewItem with:', updatedItem)
+                        return updatedItem
+                      }
+                      return current
+                    })
+                    
+                    return updatedItem
+                  }
+                  return item
+                }))
+                
+                // Show success toast after metadata is loaded (with small delay to prevent conflicts)
+                setTimeout(() => {
+                  toast({
+                    title: "Link captured",
+                    description: `${metadata.title} saved successfully`,
+                  })
+                }, 100)
+              } else {
+                // Show generic toast if metadata failed to load
+                toast({
+                  title: "Link captured",
+                  description: "New link saved successfully",
+                })
+              }
+            } else {
+              // Show toast immediately for non-links
+              toast({
+                title: "Content captured", 
+                description: "New clipboard item saved successfully",
+              })
+            }
           }
         } catch (err) {
           console.log("Clipboard access not available")
         }
       }
     },
-    [toast],
+    [toast, fetchLinkMetadata],
   )
 
   useEffect(() => {
@@ -246,11 +325,15 @@ export default function Clippy() {
   const allTags = useMemo(() => Array.from(new Set(items.flatMap((item) => item.tags))), [items])
 
   const openPreview = useCallback((item: ClipboardItem) => {
-    setPreviewItem(item)
-    setPreviewOpen(true)
+    // Batch state updates to prevent multiple re-renders
+    React.startTransition(() => {
+      console.log('👆 User clicked item, setting previewItem:', item.id, item.title)
+      setPreviewItem(item)
+      setPreviewOpen(true)
+    })
   }, [])
 
-  const ClipboardCard = ({ item }: { item: ClipboardItem }) => {
+  const ClipboardCard = memo(({ item }: { item: ClipboardItem }) => {
     const getTypeIcon = () => {
       switch (item.type) {
         case "link":
@@ -342,14 +425,45 @@ export default function Clippy() {
         </CardContent>
       </Card>
     )
-  }
+  })
 
-  const PreviewModal = () => {
-    if (!previewItem) return null
+  const PreviewModalContent = memo(({ item }: { item: ClipboardItem }) => {
+    const [iframeLoading, setIframeLoading] = useState(true)
+    const [iframeError, setIframeError] = useState(false)
+    
+    console.log('🎭 Modal opened with item:', {
+      id: item.id,
+      title: item.title,
+      domain: item.domain,
+      preview: item.preview,
+      content: item.content.substring(0, 50) + '...'
+    })
+    
+    useEffect(() => {
+      setIframeLoading(true)
+      setIframeError(false)
+      
+      // For links, set a general timeout for iframe loading
+      if (item.type === 'link') {
+        console.log('🔄 Setting 8-second timeout for link:', item.title || item.content.substring(0, 50))
+        
+        const timer = setTimeout(() => {
+          console.log('⏰ Timeout reached - showing fallback for:', item.title || item.content.substring(0, 50))
+          setIframeLoading(false)
+          setIframeError(true)
+        }, 8000) // 8 second timeout for all sites
+        
+        return () => clearTimeout(timer)
+      }
+    }, [item.id, item.type, item.domain, item.content])
 
     const renderPreviewContent = () => {
-      switch (previewItem.type) {
+      switch (item.type) {
         case "link":
+          // Always attempt iframe loading for ALL links - let them fail gracefully
+          const shouldShowIframe = true
+          
+          
           return (
             <div className="space-y-4">
               <div className="flex items-center space-x-3 p-4 bg-muted rounded-lg">
@@ -357,15 +471,15 @@ export default function Clippy() {
                   <Link className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">{previewItem.title}</h3>
-                  <p className="text-sm text-muted-foreground truncate">{previewItem.domain}</p>
+                  <h3 className="font-semibold truncate">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground truncate">{item.domain}</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation()
-                    window.open(previewItem.content, "_blank")
+                    window.open(item.content, "_blank")
                   }}
                 >
                   Open Link
@@ -380,16 +494,97 @@ export default function Clippy() {
                     <div className="w-3 h-3 rounded-full bg-green-500"></div>
                   </div>
                   <div className="flex-1 text-center">
-                    <span className="text-sm text-muted-foreground">{previewItem.content}</span>
+                    <span className="text-sm text-muted-foreground">{item.content}</span>
                   </div>
                 </div>
-                <div className="aspect-video">
-                  <iframe
-                    src={previewItem.content}
-                    className="w-full h-full"
-                    title={previewItem.title}
-                    sandbox="allow-scripts allow-same-origin"
-                  />
+                <div className="aspect-video relative">
+                  {shouldShowIframe && !iframeError ? (
+                    <>
+                      {iframeLoading && (
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+                          <div className="flex flex-col items-center space-y-2">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            <p className="text-sm text-muted-foreground">Loading preview...</p>
+                          </div>
+                        </div>
+                      )}
+                      <iframe
+                        key={item.id}
+                        src={item.content}
+                        className="w-full h-full border-0"
+                        title={item.title}
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                        loading="lazy"
+                        onLoad={(e) => {
+                          console.log('📱 Iframe load event fired for:', item.title)
+                          
+                          // Check if iframe actually has accessible content
+                          try {
+                            const iframe = e.currentTarget as HTMLIFrameElement
+                            // Try to access iframe content - this will throw if CSP blocked it
+                            const doc = iframe.contentDocument || iframe.contentWindow?.document
+                            if (doc && doc.readyState) {
+                              console.log('✅ Iframe content accessible - real success for:', item.title)
+                              setIframeLoading(false)
+                            } else {
+                              throw new Error('Content not accessible')
+                            }
+                          } catch (err) {
+                            console.log('❌ Iframe blocked by CSP/security - showing fallback for:', item.title)
+                            setIframeLoading(false)
+                            setIframeError(true)
+                          }
+                        }}
+                        onError={() => {
+                          console.log('❌ Iframe failed to load for:', item.title, '- showing fallback')
+                          setIframeLoading(false)
+                          setIframeError(true)
+                        }}
+                      />
+                      {!iframeLoading && (
+                        <div className="absolute top-2 right-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => window.open(item.content, "_blank")}
+                            className="opacity-75 hover:opacity-100"
+                          >
+                            <Link className="h-4 w-4 mr-1" />
+                            Open
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full bg-muted/20 flex flex-col items-center justify-center p-8">
+                      {(() => {
+                        console.log('🎨 Rendering fallback view for:', {
+                          title: item.title,
+                          domain: item.domain, 
+                          preview: item.preview,
+                          hasPreview: !!item.preview
+                        })
+                        return null
+                      })()}
+                      <div className="text-center max-w-md">
+                        <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                          <Link className="h-8 w-8 text-primary" />
+                        </div>
+                        <h4 className="font-semibold text-lg mb-2">{item.title}</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                          {item.preview || 'This website cannot be displayed in a preview frame.'}
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={() => window.open(item.content, "_blank")}
+                          className="inline-flex items-center space-x-2"
+                        >
+                          <Link className="h-4 w-4" />
+                          <span>Visit {item.domain}</span>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -403,13 +598,13 @@ export default function Clippy() {
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold">{previewItem.title}</h3>
-                  <p className="text-sm text-muted-foreground">{previewItem.content.length} characters</p>
+                  <h3 className="font-semibold">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground">{item.content.length} characters</p>
                 </div>
               </div>
 
               <div className="border rounded-lg p-4 bg-muted/20 max-h-96 overflow-y-auto">
-                <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed">{previewItem.content}</pre>
+                <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed">{item.content}</pre>
               </div>
             </div>
           )
@@ -422,15 +617,15 @@ export default function Clippy() {
                   <ImageIcon className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold">{previewItem.title}</h3>
+                  <h3 className="font-semibold">{item.title}</h3>
                   <p className="text-sm text-muted-foreground">Image file</p>
                 </div>
               </div>
 
               <div className="border rounded-lg overflow-hidden bg-muted/20 flex items-center justify-center min-h-64">
                 <img
-                  src={previewItem.content || "/placeholder.svg"}
-                  alt={previewItem.title || "Preview"}
+                  src={item.content || "/placeholder.svg"}
+                  alt={item.title || "Preview"}
                   className="max-w-full max-h-96 object-contain"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement
@@ -455,7 +650,7 @@ export default function Clippy() {
                   <File className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold">{previewItem.title}</h3>
+                  <h3 className="font-semibold">{item.title}</h3>
                   <p className="text-sm text-muted-foreground">File</p>
                 </div>
               </div>
@@ -463,7 +658,7 @@ export default function Clippy() {
               <div className="border rounded-lg p-8 bg-muted/20 text-center">
                 <File className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground mb-4">File preview not available</p>
-                <div className="bg-muted rounded p-3 text-sm font-mono break-all">{previewItem.content}</div>
+                <div className="bg-muted rounded p-3 text-sm font-mono break-all">{item.content}</div>
               </div>
             </div>
           )
@@ -478,47 +673,48 @@ export default function Clippy() {
     }
 
     return (
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex items-center space-x-2">
-              <span>Content Preview</span>
-              <Badge variant="secondary" className="ml-2">
-                {previewItem.type.toUpperCase()}
+      <>
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="flex items-center space-x-2">
+            <span>Content Preview</span>
+            <Badge variant="secondary" className="ml-2">
+              {item.type.toUpperCase()}
+            </Badge>
+          </DialogTitle>
+          <p id="preview-description" className="sr-only">
+            Preview of {item.type} content: {item.title || 'Untitled'}
+          </p>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto min-h-0">{renderPreviewContent()}</div>
+
+        <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t">
+          <div className="flex flex-wrap gap-1">
+            {item.tags.map((tag) => (
+              <Badge key={tag} variant="outline" className="text-xs">
+                {tag}
               </Badge>
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto">{renderPreviewContent()}</div>
-
-          <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t">
-            <div className="flex flex-wrap gap-1">
-              {previewItem.tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-muted-foreground">{formatTimestamp(previewItem.timestamp)}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  copyToClipboard(previewItem.content)
-                }}
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
-              </Button>
-            </div>
+            ))}
           </div>
-        </DialogContent>
-      </Dialog>
+
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-muted-foreground">{formatTimestamp(item.timestamp)}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                copyToClipboard(item.content)
+              }}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copy
+            </Button>
+          </div>
+        </div>
+      </>
     )
-  }
+  })
 
   const handleThemeChange = useCallback(
     (newTheme: string) => {
@@ -752,7 +948,21 @@ export default function Clippy() {
         </DialogContent>
       </Dialog>
 
-      <PreviewModal />
+      <Dialog 
+        open={previewOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            React.startTransition(() => {
+              setPreviewOpen(false)
+              setPreviewItem(null)
+            })
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-4xl h-[80vh] overflow-hidden flex flex-col" aria-describedby="preview-description">
+          {previewItem && <PreviewModalContent item={previewItem} />}
+        </DialogContent>
+      </Dialog>
 
       <Toaster />
     </SidebarProvider>
