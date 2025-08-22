@@ -429,7 +429,25 @@ export default function Clippy() {
     useEffect(() => {
       setIframeLoading(true)
       setIframeError(false)
-    }, [item.id])
+      
+      // For links, try to detect if they'll be blocked before showing iframe
+      if (item.type === 'link') {
+        // Set a shorter timeout for known problematic domains
+        const knownBlockedDomains = ['github.com', 'google.com', 'facebook.com', 'twitter.com', 'x.com', 'youtube.com', 'linkedin.com']
+        const domain = item.domain || ''
+        const isLikelyBlocked = knownBlockedDomains.some(blocked => domain.includes(blocked))
+        
+        if (isLikelyBlocked) {
+          // Show fallback immediately for known blocked domains
+          const timer = setTimeout(() => {
+            setIframeLoading(false)
+            setIframeError(true)
+          }, 2000) // Very short timeout for known blocked sites
+          
+          return () => clearTimeout(timer)
+        }
+      }
+    }, [item.id, item.type, item.domain])
 
     const renderPreviewContent = () => {
       switch (item.type) {
@@ -494,20 +512,6 @@ export default function Clippy() {
                         onError={() => {
                           setIframeLoading(false)
                           setIframeError(true)
-                        }}
-                        // Add timeout for blocked domains
-                        ref={(iframe) => {
-                          if (iframe) {
-                            const timeout = setTimeout(() => {
-                              if (iframeLoading) {
-                                setIframeLoading(false)
-                                setIframeError(true)
-                              }
-                            }, 10000) // 10 second timeout
-                            
-                            iframe.addEventListener('load', () => clearTimeout(timeout))
-                            iframe.addEventListener('error', () => clearTimeout(timeout))
-                          }
                         }}
                       />
                       {!iframeLoading && (
