@@ -36,6 +36,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
 
 interface ClipboardItem {
   id: string
@@ -513,169 +527,163 @@ export default function Clippy() {
   )
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden">
-                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
-              <h1 className="text-xl font-semibold">Clippy</h1>
-            </div>
-
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              <div className="relative hidden sm:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search titles, content, notes, tags, folders..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-64 lg:w-80"
-                />
-              </div>
-
-              <Button variant="ghost" size="icon">
-                <Plus className="h-4 w-4" />
-              </Button>
-
-              <Button variant="ghost" size="icon" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}>
-                {viewMode === "grid" ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
-              </Button>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    {!mounted ? (
-                      <Monitor className="h-4 w-4" />
-                    ) : theme === "light" ? (
-                      <Sun className="h-4 w-4" />
-                    ) : theme === "dark" ? (
-                      <Moon className="h-4 w-4" />
-                    ) : (
-                      <Monitor className="h-4 w-4" />
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleThemeChange("light")}>
-                    <Sun className="h-4 w-4 mr-2" />
-                    Light
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleThemeChange("dark")}>
-                    <Moon className="h-4 w-4 mr-2" />
-                    Dark
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleThemeChange("system")}>
-                    <Monitor className="h-4 w-4 mr-2" />
-                    System
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-3 sm:hidden">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-full"
-              />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex">
-        <aside
-          className={`${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-40 w-72 bg-card border-r transition-transform duration-300 ease-in-out overflow-y-auto`}
-        >
-          <div className="p-4 space-y-6">
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                QUICK ACCESS
-              </h3>
-              <div className="space-y-1">
-                <button className="w-full flex items-center justify-between p-2 text-sm hover:bg-accent hover:text-accent-foreground rounded">
-                  <div className="flex items-center space-x-3">
+    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
+      <Sidebar>
+        <SidebarHeader>
+          <h1 className="text-xl font-semibold px-2">Clippy</h1>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>QUICK ACCESS</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>
                     <Clock className="h-4 w-4" />
                     <span>Recently Copied</span>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {items.length}
-                  </Badge>
-                </button>
-                <button className="w-full flex items-center justify-between p-2 text-sm hover:bg-accent hover:text-accent-foreground rounded">
-                  <div className="flex items-center space-x-3">
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {items.length}
+                    </Badge>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>
                     <Star className="h-4 w-4" />
                     <span>Favorites</span>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {items.filter((item) => item.favorite).length}
-                  </Badge>
-                </button>
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {items.filter((item) => item.favorite).length}
+                    </Badge>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel>SORT BY</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="px-2">
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest to Oldest</SelectItem>
+                    <SelectItem value="oldest">Oldest to Newest</SelectItem>
+                    <SelectItem value="most-used">Most Used</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">SORT BY</h3>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest to Oldest</SelectItem>
-                  <SelectItem value="oldest">Oldest to Newest</SelectItem>
-                  <SelectItem value="most-used">Most Used</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">CATEGORIES</h3>
-              <div className="space-y-1">
+          <SidebarGroup>
+            <SidebarGroupLabel>CATEGORIES</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
                 {["all", "text", "link", "image", "file"].map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`w-full flex items-center justify-between p-2 text-sm rounded transition-colors ${
-                      selectedCategory === category
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
+                  <SidebarMenuItem key={category}>
+                    <SidebarMenuButton
+                      onClick={() => setSelectedCategory(category)}
+                      isActive={selectedCategory === category}
+                    >
                       <div
                         className={`w-2 h-2 rounded-full ${
-                          selectedCategory === category ? "bg-primary-foreground" : "bg-primary"
+                          selectedCategory === category ? "bg-primary" : "bg-muted-foreground"
                         }`}
                       />
                       <span className="capitalize">{category === "all" ? "All Items" : category}</span>
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {category === "all" ? items.length : items.filter((item) => item.type === category).length}
-                    </Badge>
-                  </button>
+                      <Badge variant="secondary" className="ml-auto text-xs">
+                        {category === "all" ? items.length : items.filter((item) => item.type === category).length}
+                      </Badge>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+
+      <SidebarInset>
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+          <div className="px-4 sm:px-6 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <SidebarTrigger />
+                <h1 className="text-xl font-semibold">Clippy</h1>
+              </div>
+
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="relative hidden sm:block">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Search titles, content, notes, tags, folders..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 w-64 lg:w-80"
+                  />
+                </div>
+
+                <Button variant="ghost" size="icon">
+                  <Plus className="h-4 w-4" />
+                </Button>
+
+                <Button variant="ghost" size="icon" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}>
+                  {viewMode === "grid" ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
+                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      {!mounted ? (
+                        <Monitor className="h-4 w-4" />
+                      ) : theme === "light" ? (
+                        <Sun className="h-4 w-4" />
+                      ) : theme === "dark" ? (
+                        <Moon className="h-4 w-4" />
+                      ) : (
+                        <Monitor className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleThemeChange("light")}>
+                      <Sun className="h-4 w-4 mr-2" />
+                      Light
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleThemeChange("dark")}>
+                      <Moon className="h-4 w-4 mr-2" />
+                      Dark
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleThemeChange("system")}>
+                      <Monitor className="h-4 w-4 mr-2" />
+                      System
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-3 sm:hidden">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-full"
+                />
               </div>
             </div>
           </div>
-        </aside>
+        </header>
 
-        {sidebarOpen && (
-          <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-        )}
-
-        <main className="flex-1 p-4 sm:p-6 bg-background">
+        <main className="flex-1 p-4 sm:p-6">
           {filteredItems.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
@@ -702,7 +710,7 @@ export default function Clippy() {
             </div>
           )}
         </main>
-      </div>
+      </SidebarInset>
 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -746,6 +754,6 @@ export default function Clippy() {
       <PreviewModal />
 
       <Toaster />
-    </div>
+    </SidebarProvider>
   )
 }
