@@ -515,9 +515,25 @@ export default function Clippy() {
                         title={item.title}
                         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                         loading="lazy"
-                        onLoad={() => {
-                          console.log('📱 Iframe loaded successfully for:', item.title)
-                          setIframeLoading(false)
+                        onLoad={(e) => {
+                          console.log('📱 Iframe load event fired for:', item.title)
+                          
+                          // Check if iframe actually has accessible content
+                          try {
+                            const iframe = e.currentTarget as HTMLIFrameElement
+                            // Try to access iframe content - this will throw if CSP blocked it
+                            const doc = iframe.contentDocument || iframe.contentWindow?.document
+                            if (doc && doc.readyState) {
+                              console.log('✅ Iframe content accessible - real success for:', item.title)
+                              setIframeLoading(false)
+                            } else {
+                              throw new Error('Content not accessible')
+                            }
+                          } catch (err) {
+                            console.log('❌ Iframe blocked by CSP/security - showing fallback for:', item.title)
+                            setIframeLoading(false)
+                            setIframeError(true)
+                          }
                         }}
                         onError={() => {
                           console.log('❌ Iframe failed to load for:', item.title, '- showing fallback')
