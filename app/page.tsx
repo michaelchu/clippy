@@ -424,28 +424,60 @@ export default function Clippy() {
   const PreviewModalContent = memo(({ item }: { item: ClipboardItem }) => {
     const [iframeLoading, setIframeLoading] = useState(true)
     const [iframeError, setIframeError] = useState(false)
+    const [canEmbed, setCanEmbed] = useState<boolean | null>(null)
     
-    // Reset iframe state when preview item changes
+    // Check if URL can be embedded before showing iframe
     useEffect(() => {
-      setIframeLoading(true)
-      setIframeError(false)
-      
-      // For links, set a general timeout for iframe loading
       if (item.type === 'link') {
-        const timer = setTimeout(() => {
-          setIframeLoading(false)
-          setIframeError(true)
-        }, 8000) // 8 second timeout for all sites
+        setIframeLoading(true)
+        setIframeError(false)
+        setCanEmbed(null)
         
-        return () => clearTimeout(timer)
+        // Check against known blocked domains
+        const checkEmbedding = () => {
+          // Extract domain from URL
+          let domain = ''
+          try {
+            const url = new URL(item.content)
+            domain = url.hostname
+          } catch (error) {
+            setCanEmbed(true)
+            return
+          }
+          
+          // List of domains known to block iframe embedding
+          const blockedDomains = [
+            'github.com', 'google.com', 'youtube.com', 'facebook.com', 
+            'twitter.com', 'x.com', 'linkedin.com', 'instagram.com',
+            'tiktok.com', 'amazon.com', 'ebay.com', 'paypal.com'
+          ]
+          
+          const isBlocked = blockedDomains.some(blocked => domain.includes(blocked))
+          
+          if (isBlocked) {
+            // Site blocks embedding, show fallback immediately
+            setCanEmbed(false)
+            setIframeLoading(false)
+            setIframeError(true)
+          } else {
+            // Unknown domain, try iframe with timeout
+            setCanEmbed(true)
+            setTimeout(() => {
+              setIframeLoading(false)
+              setIframeError(true)
+            }, 8000)
+          }
+        }
+        
+        checkEmbedding()
       }
-    }, [item.id, item.type, item.domain, item.content])
+    }, [item.id, item.type, item.content])
 
     const renderPreviewContent = () => {
       switch (item.type) {
         case "link":
-          // Always attempt iframe loading for ALL links - let them fail gracefully
-          const shouldShowIframe = true
+          // Only show iframe if we've confirmed the site allows embedding
+          const shouldShowIframe = canEmbed === true
           
           
           return (
