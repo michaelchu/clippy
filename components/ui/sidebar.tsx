@@ -32,6 +32,29 @@ const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
+/**
+ * Sets the sidebar state cookie with proper security attributes.
+ * 
+ * Note: Using client-side cookies here is appropriate because:
+ * - This is non-sensitive UI state (sidebar open/closed)
+ * - The value is a simple boolean, not user data
+ * - Server-side handling would be overengineering for client-side UI state
+ * - Value is properly encoded to prevent injection
+ */
+function setSidebarStateCookie(value: boolean | string) {
+  // Validate and sanitize the input
+  const sanitizedValue = typeof value === 'boolean' ? value.toString() : String(value)
+  
+  // Only allow 'true' or 'false' values for additional security
+  if (sanitizedValue !== 'true' && sanitizedValue !== 'false') {
+    console.warn('Invalid sidebar state value, defaulting to false')
+    return
+  }
+
+  const isSecure = typeof window !== 'undefined' && window.location.protocol === "https:"
+  document.cookie = `${SIDEBAR_COOKIE_NAME}=${encodeURIComponent(sanitizedValue)}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE};${isSecure ? " Secure;" : ""} SameSite=Lax`
+}
+
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
   open: boolean
@@ -83,7 +106,7 @@ function SidebarProvider({
       }
 
       // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${encodeURIComponent(openState)}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE};${window.location.protocol === "https:" ? " Secure;" : ""} SameSite=Lax`
+      setSidebarStateCookie(openState)
     },
     [setOpenProp, open]
   )
@@ -473,8 +496,26 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
   )
 }
 
+// Split the long class string into logical groupings for readability
+const sidebarMenuButtonBase = [
+  // Layout & base styling
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding]",
+  // Interaction states
+  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground",
+  // Disabled states
+  "disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
+  // Group/variant states
+  "group-has-data-[sidebar=menu-action]/menu-item:pr-8",
+  "data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground",
+  "data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground",
+  // Collapsible icon variant
+  "group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!",
+  // Child selectors
+  "[&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+].join(" ")
+
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  sidebarMenuButtonBase,
   {
     variants: {
       variant: {
