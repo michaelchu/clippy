@@ -432,9 +432,19 @@ export default function Clippy() {
       
       // For links, try to detect if they'll be blocked before showing iframe
       if (item.type === 'link') {
+        // Extract domain from URL if not already available
+        let domain = item.domain || ''
+        if (!domain && item.content) {
+          try {
+            const url = new URL(item.content)
+            domain = url.hostname
+          } catch (error) {
+            console.log('Failed to parse URL:', item.content)
+          }
+        }
+        
         // Set a shorter timeout for known problematic domains
         const knownBlockedDomains = ['github.com', 'google.com', 'facebook.com', 'twitter.com', 'x.com', 'youtube.com', 'linkedin.com']
-        const domain = item.domain || ''
         const isLikelyBlocked = knownBlockedDomains.some(blocked => domain.includes(blocked))
         
         if (isLikelyBlocked) {
