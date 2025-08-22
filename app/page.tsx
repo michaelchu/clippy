@@ -76,8 +76,6 @@ export default function Clippy() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewItem, setPreviewItem] = useState<ClipboardItem | null>(null)
-  const [iframeLoading, setIframeLoading] = useState(true)
-  const [iframeError, setIframeError] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
@@ -326,8 +324,6 @@ export default function Clippy() {
     React.startTransition(() => {
       setPreviewItem(item)
       setPreviewOpen(true)
-      setIframeLoading(true)
-      setIframeError(false)
     })
   }, [])
 
@@ -425,15 +421,22 @@ export default function Clippy() {
     )
   })
 
-  const PreviewModal = memo(() => {
-    if (!previewItem) return null
+  const PreviewModalContent = memo(({ item }: { item: ClipboardItem }) => {
+    const [iframeLoading, setIframeLoading] = useState(true)
+    const [iframeError, setIframeError] = useState(false)
+    
+    // Reset iframe state when preview item changes
+    useEffect(() => {
+      setIframeLoading(true)
+      setIframeError(false)
+    }, [item.id])
 
     const renderPreviewContent = () => {
-      switch (previewItem.type) {
+      switch (item.type) {
         case "link":
           // Check if domain is known to block iframes
           const blockedDomains = ['github.com', 'google.com', 'facebook.com', 'twitter.com', 'x.com', 'youtube.com', 'linkedin.com']
-          const domain = previewItem.domain || ''
+          const domain = item.domain || ''
           const shouldShowIframe = !blockedDomains.some(blocked => domain.includes(blocked))
           
           return (
@@ -443,15 +446,15 @@ export default function Clippy() {
                   <Link className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">{previewItem.title}</h3>
-                  <p className="text-sm text-muted-foreground truncate">{previewItem.domain}</p>
+                  <h3 className="font-semibold truncate">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground truncate">{item.domain}</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation()
-                    window.open(previewItem.content, "_blank")
+                    window.open(item.content, "_blank")
                   }}
                 >
                   Open Link
@@ -466,7 +469,7 @@ export default function Clippy() {
                     <div className="w-3 h-3 rounded-full bg-green-500"></div>
                   </div>
                   <div className="flex-1 text-center">
-                    <span className="text-sm text-muted-foreground">{previewItem.content}</span>
+                    <span className="text-sm text-muted-foreground">{item.content}</span>
                   </div>
                 </div>
                 <div className="aspect-video relative">
@@ -481,10 +484,10 @@ export default function Clippy() {
                         </div>
                       )}
                       <iframe
-                        key={previewItem.id}
-                        src={previewItem.content}
+                        key={item.id}
+                        src={item.content}
                         className="w-full h-full border-0"
-                        title={previewItem.title}
+                        title={item.title}
                         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                         loading="lazy"
                         onLoad={() => setIframeLoading(false)}
@@ -498,7 +501,7 @@ export default function Clippy() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => window.open(previewItem.content, "_blank")}
+                            onClick={() => window.open(item.content, "_blank")}
                             className="opacity-75 hover:opacity-100"
                           >
                             <Link className="h-4 w-4 mr-1" />
@@ -513,17 +516,17 @@ export default function Clippy() {
                         <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
                           <Link className="h-8 w-8 text-primary" />
                         </div>
-                        <h4 className="font-semibold text-lg mb-2">{previewItem.title}</h4>
+                        <h4 className="font-semibold text-lg mb-2">{item.title}</h4>
                         <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                          {previewItem.preview || `${previewItem.domain} doesn't allow embedding for security reasons.`}
+                          {item.preview || `${item.domain} doesn't allow embedding for security reasons.`}
                         </p>
                         <Button
                           variant="outline"
-                          onClick={() => window.open(previewItem.content, "_blank")}
+                          onClick={() => window.open(item.content, "_blank")}
                           className="inline-flex items-center space-x-2"
                         >
                           <Link className="h-4 w-4" />
-                          <span>Visit {previewItem.domain}</span>
+                          <span>Visit {item.domain}</span>
                         </Button>
                       </div>
                     </div>
@@ -541,13 +544,13 @@ export default function Clippy() {
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold">{previewItem.title}</h3>
-                  <p className="text-sm text-muted-foreground">{previewItem.content.length} characters</p>
+                  <h3 className="font-semibold">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground">{item.content.length} characters</p>
                 </div>
               </div>
 
               <div className="border rounded-lg p-4 bg-muted/20 max-h-96 overflow-y-auto">
-                <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed">{previewItem.content}</pre>
+                <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed">{item.content}</pre>
               </div>
             </div>
           )
@@ -560,15 +563,15 @@ export default function Clippy() {
                   <ImageIcon className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold">{previewItem.title}</h3>
+                  <h3 className="font-semibold">{item.title}</h3>
                   <p className="text-sm text-muted-foreground">Image file</p>
                 </div>
               </div>
 
               <div className="border rounded-lg overflow-hidden bg-muted/20 flex items-center justify-center min-h-64">
                 <img
-                  src={previewItem.content || "/placeholder.svg"}
-                  alt={previewItem.title || "Preview"}
+                  src={item.content || "/placeholder.svg"}
+                  alt={item.title || "Preview"}
                   className="max-w-full max-h-96 object-contain"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement
@@ -593,7 +596,7 @@ export default function Clippy() {
                   <File className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold">{previewItem.title}</h3>
+                  <h3 className="font-semibold">{item.title}</h3>
                   <p className="text-sm text-muted-foreground">File</p>
                 </div>
               </div>
@@ -601,7 +604,7 @@ export default function Clippy() {
               <div className="border rounded-lg p-8 bg-muted/20 text-center">
                 <File className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground mb-4">File preview not available</p>
-                <div className="bg-muted rounded p-3 text-sm font-mono break-all">{previewItem.content}</div>
+                <div className="bg-muted rounded p-3 text-sm font-mono break-all">{item.content}</div>
               </div>
             </div>
           )
@@ -616,57 +619,43 @@ export default function Clippy() {
     }
 
     return (
-      <Dialog 
-        open={previewOpen} 
-        onOpenChange={(open) => {
-          if (!open) {
-            React.startTransition(() => {
-              setPreviewOpen(false)
-              setPreviewItem(null)
-              setIframeLoading(true)
-              setIframeError(false)
-            })
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-4xl h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex items-center space-x-2">
-              <span>Content Preview</span>
-              <Badge variant="secondary" className="ml-2">
-                {previewItem.type.toUpperCase()}
+      <>
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="flex items-center space-x-2">
+            <span>Content Preview</span>
+            <Badge variant="secondary" className="ml-2">
+              {item.type.toUpperCase()}
+            </Badge>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto min-h-0">{renderPreviewContent()}</div>
+
+        <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t">
+          <div className="flex flex-wrap gap-1">
+            {item.tags.map((tag) => (
+              <Badge key={tag} variant="outline" className="text-xs">
+                {tag}
               </Badge>
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto min-h-0">{renderPreviewContent()}</div>
-
-          <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t">
-            <div className="flex flex-wrap gap-1">
-              {previewItem.tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-muted-foreground">{formatTimestamp(previewItem.timestamp)}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  copyToClipboard(previewItem.content)
-                }}
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
-              </Button>
-            </div>
+            ))}
           </div>
-        </DialogContent>
-      </Dialog>
+
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-muted-foreground">{formatTimestamp(item.timestamp)}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                copyToClipboard(item.content)
+              }}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copy
+            </Button>
+          </div>
+        </div>
+      </>
     )
   })
 
@@ -902,7 +891,21 @@ export default function Clippy() {
         </DialogContent>
       </Dialog>
 
-      <PreviewModal />
+      <Dialog 
+        open={previewOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            React.startTransition(() => {
+              setPreviewOpen(false)
+              setPreviewItem(null)
+            })
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-4xl h-[80vh] overflow-hidden flex flex-col">
+          {previewItem && <PreviewModalContent item={previewItem} />}
+        </DialogContent>
+      </Dialog>
 
       <Toaster />
     </SidebarProvider>
