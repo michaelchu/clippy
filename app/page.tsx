@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, memo } from "react"
 import {
   Search,
   Plus,
@@ -169,11 +169,6 @@ export default function Clippy() {
 
             // Add item immediately with loading state
             setItems((prev) => [newItem, ...prev])
-            
-            toast({
-              title: "Content captured",
-              description: "New clipboard item saved successfully",
-            })
 
             // Fetch link metadata if it's a link
             if (isLink) {
@@ -191,18 +186,49 @@ export default function Clippy() {
                 const colorIndex = metadata.domain.length % colors.length
                 
                 // Update the item with metadata
-                setItems((prev) => prev.map((item) => 
-                  item.id === newItem.id 
-                    ? {
-                        ...item,
-                        title: metadata.title,
-                        domain: metadata.domain,
-                        preview: metadata.description,
-                        color: colors[colorIndex]
+                setItems((prev) => prev.map((item) => {
+                  if (item.id === newItem.id) {
+                    const updatedItem = {
+                      ...item,
+                      title: metadata.title,
+                      domain: metadata.domain,
+                      preview: metadata.description,
+                      color: colors[colorIndex]
+                    }
+                    
+                    // Also update previewItem if it's the same item currently being previewed
+                    setPreviewItem(current => {
+                      if (current && current.id === newItem.id) {
+                        return updatedItem
                       }
-                    : item
-                ))
+                      return current
+                    })
+                    
+                    return updatedItem
+                  }
+                  return item
+                }))
+                
+                // Show success toast after metadata is loaded (with small delay to prevent conflicts)
+                setTimeout(() => {
+                  toast({
+                    title: "Link captured",
+                    description: `${metadata.title} saved successfully`,
+                  })
+                }, 100)
+              } else {
+                // Show generic toast if metadata failed to load
+                toast({
+                  title: "Link captured",
+                  description: "New link saved successfully",
+                })
               }
+            } else {
+              // Show toast immediately for non-links
+              toast({
+                title: "Content captured", 
+                description: "New clipboard item saved successfully",
+              })
             }
           }
         } catch (err) {
@@ -298,7 +324,7 @@ export default function Clippy() {
     setPreviewOpen(true)
   }, [])
 
-  const ClipboardCard = ({ item }: { item: ClipboardItem }) => {
+  const ClipboardCard = memo(({ item }: { item: ClipboardItem }) => {
     const getTypeIcon = () => {
       switch (item.type) {
         case "link":
@@ -390,7 +416,7 @@ export default function Clippy() {
         </CardContent>
       </Card>
     )
-  }
+  })
 
   const PreviewModal = useCallback(() => {
     if (!previewItem) return null
