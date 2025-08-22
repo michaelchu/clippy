@@ -172,7 +172,9 @@ export default function Clippy() {
 
             // Fetch link metadata if it's a link
             if (isLink) {
+              console.log('🔍 Fetching metadata for:', text)
               const metadata = await fetchLinkMetadata(text)
+              console.log('📄 Metadata received:', metadata)
               if (metadata) {
                 // Generate a color gradient based on domain
                 const colors = [
@@ -196,9 +198,12 @@ export default function Clippy() {
                       color: colors[colorIndex]
                     }
                     
+                    console.log('✅ Updated item with metadata:', updatedItem)
+                    
                     // Also update previewItem if it's the same item currently being previewed
                     setPreviewItem(current => {
                       if (current && current.id === newItem.id) {
+                        console.log('🔄 Also updating previewItem with:', updatedItem)
                         return updatedItem
                       }
                       return current
@@ -424,60 +429,38 @@ export default function Clippy() {
   const PreviewModalContent = memo(({ item }: { item: ClipboardItem }) => {
     const [iframeLoading, setIframeLoading] = useState(true)
     const [iframeError, setIframeError] = useState(false)
-    const [canEmbed, setCanEmbed] = useState<boolean | null>(null)
     
-    // Check if URL can be embedded before showing iframe
+    console.log('🎭 Modal opened with item:', {
+      id: item.id,
+      title: item.title,
+      domain: item.domain,
+      preview: item.preview,
+      content: item.content.substring(0, 50) + '...'
+    })
+    
     useEffect(() => {
+      setIframeLoading(true)
+      setIframeError(false)
+      
+      // For links, set a general timeout for iframe loading
       if (item.type === 'link') {
-        setIframeLoading(true)
-        setIframeError(false)
-        setCanEmbed(null)
+        console.log('🔄 Setting 8-second timeout for link:', item.title || item.content.substring(0, 50))
         
-        // Check against known blocked domains
-        const checkEmbedding = () => {
-          // Extract domain from URL
-          let domain = ''
-          try {
-            const url = new URL(item.content)
-            domain = url.hostname
-          } catch (error) {
-            setCanEmbed(true)
-            return
-          }
-          
-          // List of domains known to block iframe embedding
-          const blockedDomains = [
-            'github.com', 'google.com', 'youtube.com', 'facebook.com', 
-            'twitter.com', 'x.com', 'linkedin.com', 'instagram.com',
-            'tiktok.com', 'amazon.com', 'ebay.com', 'paypal.com'
-          ]
-          
-          const isBlocked = blockedDomains.some(blocked => domain.includes(blocked))
-          
-          if (isBlocked) {
-            // Site blocks embedding, show fallback immediately
-            setCanEmbed(false)
-            setIframeLoading(false)
-            setIframeError(true)
-          } else {
-            // Unknown domain, try iframe with timeout
-            setCanEmbed(true)
-            setTimeout(() => {
-              setIframeLoading(false)
-              setIframeError(true)
-            }, 8000)
-          }
-        }
+        const timer = setTimeout(() => {
+          console.log('⏰ Timeout reached - showing fallback for:', item.title || item.content.substring(0, 50))
+          setIframeLoading(false)
+          setIframeError(true)
+        }, 8000) // 8 second timeout for all sites
         
-        checkEmbedding()
+        return () => clearTimeout(timer)
       }
-    }, [item.id, item.type, item.content])
+    }, [item.id, item.type, item.domain, item.content])
 
     const renderPreviewContent = () => {
       switch (item.type) {
         case "link":
-          // Only show iframe if we've confirmed the site allows embedding
-          const shouldShowIframe = canEmbed === true
+          // Always attempt iframe loading for ALL links - let them fail gracefully
+          const shouldShowIframe = true
           
           
           return (
