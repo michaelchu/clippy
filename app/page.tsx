@@ -76,6 +76,8 @@ export default function Clippy() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewItem, setPreviewItem] = useState<ClipboardItem | null>(null)
+  const [iframeLoading, setIframeLoading] = useState(true)
+  const [iframeError, setIframeError] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
@@ -322,6 +324,8 @@ export default function Clippy() {
   const openPreview = useCallback((item: ClipboardItem) => {
     setPreviewItem(item)
     setPreviewOpen(true)
+    setIframeLoading(true)
+    setIframeError(false)
   }, [])
 
   const ClipboardCard = memo(({ item }: { item: ClipboardItem }) => {
@@ -457,17 +461,42 @@ export default function Clippy() {
                     <span className="text-sm text-muted-foreground">{previewItem.content}</span>
                   </div>
                 </div>
-                <div className="aspect-video bg-muted/20 flex flex-col items-center justify-center p-8">
-                  {previewItem.preview && (
-                    <div className="text-center max-w-md">
-                      <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                        <Link className="h-8 w-8 text-primary" />
+                <div className="aspect-video relative">
+                  {iframeLoading && !iframeError && (
+                    <div className="absolute inset-0 bg-muted/20 flex items-center justify-center">
+                      <div className="flex flex-col items-center space-y-2">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <p className="text-sm text-muted-foreground">Loading preview...</p>
                       </div>
-                      <h4 className="font-semibold text-lg mb-2">{previewItem.title}</h4>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {previewItem.preview}
-                      </p>
-                      <div className="mt-4">
+                    </div>
+                  )}
+                  
+                  {!iframeError && (
+                    <iframe
+                      key={previewItem.id}
+                      src={previewItem.content}
+                      className="w-full h-full border-0"
+                      title={previewItem.title}
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                      loading="lazy"
+                      onLoad={() => setIframeLoading(false)}
+                      onError={() => {
+                        setIframeLoading(false)
+                        setIframeError(true)
+                      }}
+                    />
+                  )}
+                  
+                  {iframeError && (
+                    <div className="w-full h-full bg-muted/20 flex flex-col items-center justify-center p-8">
+                      <div className="text-center max-w-md">
+                        <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                          <Link className="h-8 w-8 text-primary" />
+                        </div>
+                        <h4 className="font-semibold text-lg mb-2">{previewItem.title}</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                          {previewItem.preview || 'This site cannot be displayed in a frame for security reasons.'}
+                        </p>
                         <Button
                           variant="outline"
                           onClick={() => window.open(previewItem.content, "_blank")}
@@ -479,22 +508,17 @@ export default function Clippy() {
                       </div>
                     </div>
                   )}
-                  {!previewItem.preview && (
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                        <Link className="h-8 w-8 text-primary" />
-                      </div>
-                      <h4 className="font-semibold text-lg mb-2">{previewItem.title}</h4>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Link preview not available
-                      </p>
+                  
+                  {!iframeError && (
+                    <div className="absolute top-2 right-2">
                       <Button
-                        variant="outline"
+                        variant="secondary"
+                        size="sm"
                         onClick={() => window.open(previewItem.content, "_blank")}
-                        className="inline-flex items-center space-x-2"
+                        className="opacity-75 hover:opacity-100"
                       >
-                        <Link className="h-4 w-4" />
-                        <span>Visit {previewItem.domain}</span>
+                        <Link className="h-4 w-4 mr-1" />
+                        Open
                       </Button>
                     </div>
                   )}
@@ -626,7 +650,7 @@ export default function Clippy() {
         </DialogContent>
       </Dialog>
     )
-  }, [previewItem, previewOpen, formatTimestamp, copyToClipboard])
+  }, [previewItem, previewOpen, formatTimestamp, copyToClipboard, iframeLoading, iframeError])
 
   const handleThemeChange = useCallback(
     (newTheme: string) => {
