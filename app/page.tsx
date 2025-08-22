@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { useTheme } from "next-themes"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui/toaster"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -588,9 +589,10 @@ export default function Clippy() {
                       isActive={selectedCategory === category}
                     >
                       <div
-                        className={`w-2 h-2 rounded-full ${
+                        className={cn(
+                          "w-2 h-2 rounded-full",
                           selectedCategory === category ? "bg-primary" : "bg-muted-foreground"
-                        }`}
+                        )}
                       />
                       <span className="capitalize">{category === "all" ? "All Items" : category}</span>
                       <Badge variant="secondary" className="ml-auto text-xs">
