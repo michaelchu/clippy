@@ -327,6 +327,7 @@ export default function Clippy() {
   const openPreview = useCallback((item: ClipboardItem) => {
     // Batch state updates to prevent multiple re-renders
     React.startTransition(() => {
+      console.log('👆 User clicked item, setting previewItem:', item.id, item.title)
       setPreviewItem(item)
       setPreviewOpen(true)
     })
@@ -515,9 +516,11 @@ export default function Clippy() {
                         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                         loading="lazy"
                         onLoad={() => {
+                          console.log('📱 Iframe loaded successfully for:', item.title)
                           setIframeLoading(false)
                         }}
                         onError={() => {
+                          console.log('❌ Iframe failed to load for:', item.title, '- showing fallback')
                           setIframeLoading(false)
                           setIframeError(true)
                         }}
@@ -538,6 +541,15 @@ export default function Clippy() {
                     </>
                   ) : (
                     <div className="w-full h-full bg-muted/20 flex flex-col items-center justify-center p-8">
+                      {(() => {
+                        console.log('🎨 Rendering fallback view for:', {
+                          title: item.title,
+                          domain: item.domain, 
+                          preview: item.preview,
+                          hasPreview: !!item.preview
+                        })
+                        return null
+                      })()}
                       <div className="text-center max-w-md">
                         <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
                           <Link className="h-8 w-8 text-primary" />
