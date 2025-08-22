@@ -613,7 +613,6 @@ export default function Clippy() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <SidebarTrigger />
-                <h1 className="text-xl font-semibold">Clippy</h1>
               </div>
 
               <div className="flex items-center space-x-2 sm:space-x-3">
