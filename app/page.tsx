@@ -428,6 +428,11 @@ export default function Clippy() {
     const renderPreviewContent = () => {
       switch (previewItem.type) {
         case "link":
+          // Check if domain is known to block iframes
+          const blockedDomains = ['github.com', 'google.com', 'facebook.com', 'twitter.com', 'x.com', 'youtube.com', 'linkedin.com']
+          const domain = previewItem.domain || ''
+          const shouldShowIframe = !blockedDomains.some(blocked => domain.includes(blocked))
+          
           return (
             <div className="space-y-4">
               <div className="flex items-center space-x-3 p-4 bg-muted rounded-lg">
@@ -462,32 +467,44 @@ export default function Clippy() {
                   </div>
                 </div>
                 <div className="aspect-video relative">
-                  {iframeLoading && !iframeError && (
-                    <div className="absolute inset-0 bg-muted/20 flex items-center justify-center">
-                      <div className="flex flex-col items-center space-y-2">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        <p className="text-sm text-muted-foreground">Loading preview...</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {!iframeError && (
-                    <iframe
-                      key={previewItem.id}
-                      src={previewItem.content}
-                      className="w-full h-full border-0"
-                      title={previewItem.title}
-                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                      loading="lazy"
-                      onLoad={() => setIframeLoading(false)}
-                      onError={() => {
-                        setIframeLoading(false)
-                        setIframeError(true)
-                      }}
-                    />
-                  )}
-                  
-                  {iframeError && (
+                  {shouldShowIframe && !iframeError ? (
+                    <>
+                      {iframeLoading && (
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+                          <div className="flex flex-col items-center space-y-2">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            <p className="text-sm text-muted-foreground">Loading preview...</p>
+                          </div>
+                        </div>
+                      )}
+                      <iframe
+                        key={previewItem.id}
+                        src={previewItem.content}
+                        className="w-full h-full border-0"
+                        title={previewItem.title}
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                        loading="lazy"
+                        onLoad={() => setIframeLoading(false)}
+                        onError={() => {
+                          setIframeLoading(false)
+                          setIframeError(true)
+                        }}
+                      />
+                      {!iframeLoading && (
+                        <div className="absolute top-2 right-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => window.open(previewItem.content, "_blank")}
+                            className="opacity-75 hover:opacity-100"
+                          >
+                            <Link className="h-4 w-4 mr-1" />
+                            Open
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
                     <div className="w-full h-full bg-muted/20 flex flex-col items-center justify-center p-8">
                       <div className="text-center max-w-md">
                         <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
@@ -495,7 +512,7 @@ export default function Clippy() {
                         </div>
                         <h4 className="font-semibold text-lg mb-2">{previewItem.title}</h4>
                         <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                          {previewItem.preview || 'This site cannot be displayed in a frame for security reasons.'}
+                          {previewItem.preview || `${previewItem.domain} doesn't allow embedding for security reasons.`}
                         </p>
                         <Button
                           variant="outline"
@@ -506,20 +523,6 @@ export default function Clippy() {
                           <span>Visit {previewItem.domain}</span>
                         </Button>
                       </div>
-                    </div>
-                  )}
-                  
-                  {!iframeError && (
-                    <div className="absolute top-2 right-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => window.open(previewItem.content, "_blank")}
-                        className="opacity-75 hover:opacity-100"
-                      >
-                        <Link className="h-4 w-4 mr-1" />
-                        Open
-                      </Button>
                     </div>
                   )}
                 </div>
