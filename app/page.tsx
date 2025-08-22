@@ -84,6 +84,19 @@ export default function Clippy() {
     setMounted(true)
   }, [])
 
+  const fetchLinkMetadata = async (url: string) => {
+    try {
+      const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
+      if (response.ok) {
+        const metadata = await response.json()
+        return metadata
+      }
+    } catch (error) {
+      console.error('Failed to fetch link metadata:', error)
+    }
+    return null
+  }
+
   useEffect(() => {
     const mockItems: ClipboardItem[] = [
       {
@@ -142,27 +155,62 @@ export default function Clippy() {
         try {
           const text = await navigator.clipboard.readText()
           if (text && text.trim()) {
-            const newItem: ClipboardItem = {
+            const isLink = text.startsWith("http://") || text.startsWith("https://")
+            
+            let newItem: ClipboardItem = {
               id: Date.now().toString(),
               content: text,
-              type: text.startsWith("http") ? "link" : "text",
+              type: isLink ? "link" : "text",
               timestamp: new Date(),
               tags: [],
               favorite: false,
-              title: text.startsWith("http") ? "New Link" : "New Text",
+              title: isLink ? "Loading..." : "New Text",
             }
+
+            // Add item immediately with loading state
             setItems((prev) => [newItem, ...prev])
+            
             toast({
               title: "Content captured",
               description: "New clipboard item saved successfully",
             })
+
+            // Fetch link metadata if it's a link
+            if (isLink) {
+              const metadata = await fetchLinkMetadata(text)
+              if (metadata) {
+                // Generate a color gradient based on domain
+                const colors = [
+                  "from-blue-500 to-purple-600",
+                  "from-green-500 to-blue-600", 
+                  "from-purple-500 to-pink-600",
+                  "from-orange-500 to-red-600",
+                  "from-teal-500 to-cyan-600",
+                  "from-indigo-500 to-blue-600"
+                ]
+                const colorIndex = metadata.domain.length % colors.length
+                
+                // Update the item with metadata
+                setItems((prev) => prev.map((item) => 
+                  item.id === newItem.id 
+                    ? {
+                        ...item,
+                        title: metadata.title,
+                        domain: metadata.domain,
+                        preview: metadata.description,
+                        color: colors[colorIndex]
+                      }
+                    : item
+                ))
+              }
+            }
           }
         } catch (err) {
           console.log("Clipboard access not available")
         }
       }
     },
-    [toast],
+    [toast, fetchLinkMetadata],
   )
 
   useEffect(() => {
