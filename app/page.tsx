@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, memo } from "react"
+import React, { useState, useEffect, useCallback, useMemo, memo } from "react"
 import {
   Search,
   Plus,
@@ -322,10 +322,13 @@ export default function Clippy() {
   const allTags = useMemo(() => Array.from(new Set(items.flatMap((item) => item.tags))), [items])
 
   const openPreview = useCallback((item: ClipboardItem) => {
-    setPreviewItem(item)
-    setPreviewOpen(true)
-    setIframeLoading(true)
-    setIframeError(false)
+    // Batch state updates to prevent multiple re-renders
+    React.startTransition(() => {
+      setPreviewItem(item)
+      setPreviewOpen(true)
+      setIframeLoading(true)
+      setIframeError(false)
+    })
   }, [])
 
   const ClipboardCard = memo(({ item }: { item: ClipboardItem }) => {
@@ -422,7 +425,7 @@ export default function Clippy() {
     )
   })
 
-  const PreviewModal = useCallback(() => {
+  const PreviewModal = memo(() => {
     if (!previewItem) return null
 
     const renderPreviewContent = () => {
@@ -613,8 +616,20 @@ export default function Clippy() {
     }
 
     return (
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <Dialog 
+        open={previewOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            React.startTransition(() => {
+              setPreviewOpen(false)
+              setPreviewItem(null)
+              setIframeLoading(true)
+              setIframeError(false)
+            })
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-4xl h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center space-x-2">
               <span>Content Preview</span>
@@ -624,7 +639,7 @@ export default function Clippy() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto">{renderPreviewContent()}</div>
+          <div className="flex-1 overflow-y-auto min-h-0">{renderPreviewContent()}</div>
 
           <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t">
             <div className="flex flex-wrap gap-1">
@@ -653,7 +668,7 @@ export default function Clippy() {
         </DialogContent>
       </Dialog>
     )
-  }, [previewItem, previewOpen, formatTimestamp, copyToClipboard, iframeLoading, iframeError])
+  })
 
   const handleThemeChange = useCallback(
     (newTheme: string) => {
