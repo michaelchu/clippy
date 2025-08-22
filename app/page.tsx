@@ -432,10 +432,7 @@ export default function Clippy() {
       
       // For links, set a general timeout for iframe loading
       if (item.type === 'link') {
-        console.log('🔄 Setting 8-second timeout for link:', item.title || item.content.substring(0, 50))
-        
         const timer = setTimeout(() => {
-          console.log('⏰ Timeout reached - showing fallback for:', item.title || item.content.substring(0, 50))
           setIframeLoading(false)
           setIframeError(true)
         }, 8000) // 8 second timeout for all sites
@@ -450,7 +447,6 @@ export default function Clippy() {
           // Always attempt iframe loading for ALL links - let them fail gracefully
           const shouldShowIframe = true
           
-          console.log('🎯 Attempting iframe for ALL links:', item.title || item.content.substring(0, 50))
           
           return (
             <div className="space-y-4">
@@ -642,6 +638,9 @@ export default function Clippy() {
               {item.type.toUpperCase()}
             </Badge>
           </DialogTitle>
+          <p id="preview-description" className="sr-only">
+            Preview of {item.type} content: {item.title || 'Untitled'}
+          </p>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto min-h-0">{renderPreviewContent()}</div>
@@ -917,7 +916,7 @@ export default function Clippy() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-4xl h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-4xl h-[80vh] overflow-hidden flex flex-col" aria-describedby="preview-description">
           {previewItem && <PreviewModalContent item={previewItem} />}
         </DialogContent>
       </Dialog>
