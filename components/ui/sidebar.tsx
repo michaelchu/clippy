@@ -38,7 +38,7 @@ type SidebarContextProps = {
   setOpen: (open: boolean) => void
   openMobile: boolean
   setOpenMobile: (open: boolean) => void
-  isMobile: boolean
+  isMobile: boolean | undefined
   toggleSidebar: () => void
 }
 
@@ -83,14 +83,14 @@ function SidebarProvider({
       }
 
       // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE};${window.location.protocol === "https:" ? " Secure;" : ""} SameSite=Lax`
+      document.cookie = `${SIDEBAR_COOKIE_NAME}=${encodeURIComponent(openState)}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE};${window.location.protocol === "https:" ? " Secure;" : ""} SameSite=Lax`
     },
     [setOpenProp, open]
   )
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
+    return isMobile === true ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
 
   // Adds a keyboard shortcut to toggle the sidebar.
@@ -180,7 +180,7 @@ function Sidebar({
     )
   }
 
-  if (isMobile) {
+  if (isMobile === true) {
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
@@ -538,7 +538,7 @@ function SidebarMenuButton({
       <TooltipContent
         side="right"
         align="center"
-        hidden={state !== "collapsed" || isMobile}
+        hidden={state !== "collapsed" || isMobile === true}
         {...tooltip}
       />
     </Tooltip>
@@ -602,12 +602,13 @@ function SidebarMenuBadge({
 function SidebarMenuSkeleton({
   className,
   showIcon = false,
+  skeletonWidth = "70%",
   ...props
 }: React.ComponentProps<"div"> & {
   showIcon?: boolean
+  skeletonWidth?: string
 }) {
-  // Random width between 50 to 90%.
-  const widthRef = React.useRef(`${Math.floor(Math.random() * 40) + 50}%`)
+  // Use configurable width for consistent, deterministic behavior
 
   return (
     <div
@@ -627,7 +628,7 @@ function SidebarMenuSkeleton({
         data-sidebar="menu-skeleton-text"
         style={
           {
-            "--skeleton-width": widthRef.current,
+            "--skeleton-width": skeletonWidth,
           } as React.CSSProperties
         }
       />
